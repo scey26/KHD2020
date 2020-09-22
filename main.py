@@ -12,6 +12,7 @@ import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader 
 import torchvision.transforms as transforms
 from sklearn.model_selection import train_test_split
+import model
 
 
 ######################## DONOTCHANGE ###########################
@@ -131,7 +132,7 @@ if __name__ == '__main__':
 
     # hyperparameters
     args.add_argument('--epoch', type=int, default=200)
-    args.add_argument('--batch_size', type=int, default=16) 
+    args.add_argument('--batch_size', type=int, default=32) 
     args.add_argument('--learning_rate', type=float, default=0.00015)
 
     config = args.parse_args()
@@ -143,9 +144,12 @@ if __name__ == '__main__':
     learning_rate = config.learning_rate 
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     print(device)
+    print(f"epoch : {num_epochs}, batch_size : {batch_size}, learning_rate : {learning_rate}")
 
     # model setting ## 반드시 이 위치에서 로드해야함
-    model = arch.CNN().to(device)
+    # model = arch.CNN().to(device)
+    model = model.EfficientNet().to(device)
+    print(model)
 
     # Loss and optimizer
     criterion = nn.CrossEntropyLoss()
