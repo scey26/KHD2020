@@ -189,7 +189,6 @@ if __name__ == '__main__':
             train_acc_list, val_acc_list = [], []
             for i, (images, labels) in enumerate(train_loader):
                 images = images.to(device)
-                images = stochastic_aug(images)
                 labels = labels.to(device)
                 
                 # Forward pass
