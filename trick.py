@@ -1,6 +1,13 @@
 import numpy as np
 import torch
 
+'''
+Reference Link:
+Cut-mix
+https://github.com/clovaai/CutMix-PyTorch/blob/2d8eb68faff7fe4962776ad51d175c3b01a25734/train.py#L279
+Mixup
+https://github.com/facebookresearch/mixup-cifar10/blob/master/train.py
+'''
 
 def mixup_data(x, y, alpha=1.0, use_cuda=True):
     '''Returns mixed inputs, pairs of targets, and lambda'''
