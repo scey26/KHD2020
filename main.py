@@ -1,13 +1,13 @@
 import os
 import argparse
-import sys
-import time
-import arch
+# import sys
+# import time
+# import arch
 import cv2 
 import numpy as np
 import nsml
 from nsml.constants import DATASET_PATH, GPU_NUM
-import torch 
+import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader 
 import torchvision.transforms as transforms
@@ -149,6 +149,15 @@ if __name__ == '__main__':
     # model setting ## 반드시 이 위치에서 로드해야함
     # model = arch.CNN().to(device)
     model = model.EfficientNet().to(device)
+
+    # Loading pretrained model
+    checkpoint_dict = torch.load('./efficientnet-b0-4cfa50.pth')
+    del checkpoint_dict['classifier.1.weight']
+    del checkpoint_dict['classifier.0.weight']
+    model_dict = model.state_dict()
+    model_dict.update(checkpoint_dict)
+    model.load_state_dict(model_dict)
+
     print(model)
 
     # Loss and optimizer
