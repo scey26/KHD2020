@@ -148,12 +148,16 @@ if __name__ == '__main__':
 
     # model setting ## 반드시 이 위치에서 로드해야함
     # model = arch.CNN().to(device)
-    model = model.EfficientNet().to(device)
+    model = model.EfficientNet(1.0, 1.0, 0.2).to(device)
 
     # Loading pretrained model
-    checkpoint_dict = torch.load('./efficientnet-b0-4cfa50.pth')
+    # checkpoint_dict = torch.hub.load_state_dict_from_url("https://www.dropbox.com/s/qxonlu3q02v9i47/efficientnet-b5-4c7978.pth?dl=1")
+    # checkpoint_dict = torch.load('./efficientnet-b5-4c7978.pth')
+    checkpoint_dict = torch.utils.model_zoo.load_url("https://www.dropbox.com/s/9wigibun8n260qm/efficientnet-b0-4cfa50.pth?dl=1")
+    print("load finished")
+    
     del checkpoint_dict['classifier.1.weight']
-    del checkpoint_dict['classifier.0.weight']
+    del checkpoint_dict['classifier.1.bias']
     model_dict = model.state_dict()
     model_dict.update(checkpoint_dict)
     model.load_state_dict(model_dict)
