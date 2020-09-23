@@ -133,7 +133,7 @@ if __name__ == '__main__':
     # hyperparameters
     args.add_argument('--epoch', type=int, default=200)
     args.add_argument('--batch_size', type=int, default=32) 
-    args.add_argument('--learning_rate', type=float, default=0.00015)
+    args.add_argument('--learning_rate', type=float, default=0.00005)
 
     config = args.parse_args()
 
