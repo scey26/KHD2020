@@ -148,12 +148,13 @@ if __name__ == '__main__':
 
     # model setting ## 반드시 이 위치에서 로드해야함
     # model = arch.CNN().to(device)
-    model = model.EfficientNet(1.0, 1.0, 0.2).to(device)
+    model = model.EfficientNet(1.2, 1.4, 0.3).to(device)
 
     # Loading pretrained model
     # checkpoint_dict = torch.hub.load_state_dict_from_url("https://www.dropbox.com/s/qxonlu3q02v9i47/efficientnet-b5-4c7978.pth?dl=1")
     # checkpoint_dict = torch.load('./efficientnet-b5-4c7978.pth')
-    checkpoint_dict = torch.utils.model_zoo.load_url("https://www.dropbox.com/s/9wigibun8n260qm/efficientnet-b0-4cfa50.pth?dl=1")
+    checkpoint_dict = torch.utils.model_zoo.load_url("https://www.dropbox.com/s/5uqok5gd33fom5p/efficientnet-b3-bdc7f4.pth?dl=1")
+    # ("https://www.dropbox.com/s/9wigibun8n260qm/efficientnet-b0-4cfa50.pth?dl=1")
     print("load finished")
     
     del checkpoint_dict['classifier.1.weight']
@@ -161,12 +162,20 @@ if __name__ == '__main__':
     model_dict = model.state_dict()
     model_dict.update(checkpoint_dict)
     model.load_state_dict(model_dict)
+    '''
+    for p in model.parameters():
+        p.requires_grad = False
+    
+    model.classifier[1].weight.requires_grad = True
+    model.classifier[1].bias.requires_grad = True
+    '''
 
     print(model)
 
     # Loss and optimizer
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-4)
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-6)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=15, gamma=0.8)
 
     ############ DONOTCHANGE ###############
     bind_model(model)
@@ -177,6 +186,7 @@ if __name__ == '__main__':
 
     if config.mode == 'train': ### training mode 일때는 여기만 접근
         print('Training Start...')
+        # nsml.load(checkpoint="27", session="KHD044/Breast_Pathology")
 
         ############ DONOTCHANGE: Path loader ###############
         root_path = os.path.join(DATASET_PATH,'train')
@@ -258,3 +268,5 @@ if __name__ == '__main__':
             nsml.report(summary=True, step=epoch, epoch_total=num_epochs, train_loss=train_loss, train_acc=train_acc,
                                                                           val_loss=val_loss, val_acc=val_acc)#, acc=train_acc)
             nsml.save(epoch)
+            
+            scheduler.step()
