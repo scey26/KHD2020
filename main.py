@@ -13,6 +13,7 @@ from torch.utils.data import Dataset, DataLoader
 import torchvision.transforms as transforms
 from sklearn.model_selection import train_test_split
 import model
+from  sklearn.model_selection import KFold
 
 
 ######################## DONOTCHANGE ###########################
@@ -134,14 +135,15 @@ if __name__ == '__main__':
     args.add_argument('--epoch', type=int, default=200)
     args.add_argument('--batch_size', type=int, default=32) 
     args.add_argument('--learning_rate', type=float, default=0.00005)
-
+    args.add_argument('--fold_count',type=int, default=5)
     config = args.parse_args()
 
     # training parameters
     num_epochs = config.epoch
     batch_size = config.batch_size
     num_classes = 2
-    learning_rate = config.learning_rate 
+    learning_rate = config.learning_rate
+    fold_count = config.fold_count
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     print(device)
     print(f"epoch : {num_epochs}, batch_size : {batch_size}, learning_rate : {learning_rate}")
@@ -187,64 +189,35 @@ if __name__ == '__main__':
     if config.mode == 'train': ### training mode 일때는 여기만 접근
         print('Training Start...')
         # nsml.load(checkpoint="27", session="KHD044/Breast_Pathology")
-
+        kfold = KFold(n_splits=fold_count,random_state=0,shuffle=True)
         ############ DONOTCHANGE: Path loader ###############
         root_path = os.path.join(DATASET_PATH,'train')
         image_keys, image_path = path_loader(root_path)
         labels = label_loader(root_path, image_keys)
         ##############################################
- 
+
         dataset = PathDataset(image_path, labels, test_mode=False)
-        train_set, val_set = torch.utils.data.random_split(dataset, [int(len(dataset)*0.95), len(dataset) - int(len(dataset)*0.95)])
-        print(f"Train set length : {len(train_set)}, Valid set length : {len(val_set)}")
-        train_loader = DataLoader(\
-                dataset=train_set, 
-                batch_size=batch_size, shuffle=True)
-        val_loader = DataLoader(\
-                dataset=val_set, 
-                batch_size=batch_size, shuffle=False)
 
-        '''
-        batch_loader = DataLoader(\
-            dataset=PathDataset(image_path, labels, test_mode=False), 
-                batch_size=batch_size, shuffle=True)
-        '''
+        for i, (train_index, val_index) in enumerate(kfold.split(dataset)):
+            train_set = torch.utils.data.Subset(dataset,train_index)
+            val_set = torch.utils.data.Subset(dataset,val_index)
+            print(f"Train set length : {len(train_set)}, Valid set length : {len(val_set)}")
+
+            train_loader = DataLoader(\
+                    dataset=train_set,
+                    batch_size=batch_size, shuffle=False)
+            val_loader = DataLoader(\
+                    dataset=val_set,
+                    batch_size=batch_size, shuffle=False)
         
-        # Train the model
-        for epoch in range(num_epochs):
-            train_loss_list, val_loss_list = [], []
-            train_acc_list, val_acc_list = [], []
-            for i, (images, labels) in enumerate(train_loader):
-                images = images.to(device)
-                labels = labels.to(device)
-                
-                # Forward pass
-                outputs = model(images)
-                loss = criterion(outputs, labels)
-
-                _, outputs_label = outputs.max(dim=1)
-                outputs_label = outputs_label.float()
-                # (outputs > 0.5).float()
-                labels_label = labels.float()
-
-                right = (outputs_label == labels_label).float()
-                acc = right.sum().item() / right.numel()
-
-                train_loss_list.append(loss.item())
-                train_acc_list.append(acc)
-                # Backward and optimize
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
-            
-            train_loss = sum(train_loss_list) / len(train_loss_list)
-            train_acc = sum(train_acc_list) / len(train_acc_list)
-
-            for i, (images, labels) in enumerate(val_loader):
-                with torch.no_grad():
+            # Train the model
+            for epoch in range(num_epochs):
+                train_loss_list, val_loss_list = [], []
+                train_acc_list, val_acc_list = [], []
+                for i, (images, labels) in enumerate(train_loader):
                     images = images.to(device)
                     labels = labels.to(device)
-                    
+
                     # Forward pass
                     outputs = model(images)
                     loss = criterion(outputs, labels)
@@ -257,16 +230,42 @@ if __name__ == '__main__':
                     right = (outputs_label == labels_label).float()
                     acc = right.sum().item() / right.numel()
 
-                    val_loss_list.append(loss.item())
-                    val_acc_list.append(acc)
-                
-            val_loss = sum(val_loss_list) / len(val_loss_list)
-            val_acc = sum(val_acc_list) / len(val_acc_list)
+                    train_loss_list.append(loss.item())
+                    train_acc_list.append(acc)
+                    # Backward and optimize
+                    optimizer.zero_grad()
+                    loss.backward()
+                    optimizer.step()
+
+                train_loss = sum(train_loss_list) / len(train_loss_list)
+                train_acc = sum(train_acc_list) / len(train_acc_list)
+
+                for i, (images, labels) in enumerate(val_loader):
+                    with torch.no_grad():
+                        images = images.to(device)
+                        labels = labels.to(device)
+
+                        # Forward pass
+                        outputs = model(images)
+                        loss = criterion(outputs, labels)
+
+                        _, outputs_label = outputs.max(dim=1)
+                        outputs_label = outputs_label.float()
+                        # (outputs > 0.5).float()
+                        labels_label = labels.float()
+
+                        right = (outputs_label == labels_label).float()
+                        acc = right.sum().item() / right.numel()
+
+                        val_loss_list.append(loss.item())
+                        val_acc_list.append(acc)
+
+                val_loss = sum(val_loss_list) / len(val_loss_list)
+                val_acc = sum(val_acc_list) / len(val_acc_list)
             
-            # print(loss.item(), acc.item())
-            print(epoch, train_loss, train_acc, val_loss, val_acc)
-            nsml.report(summary=True, step=epoch, epoch_total=num_epochs, train_loss=train_loss, train_acc=train_acc,
-                                                                          val_loss=val_loss, val_acc=val_acc)#, acc=train_acc)
-            nsml.save(epoch)
+                print(epoch, train_loss, train_acc, val_loss, val_acc)
+                nsml.report(summary=True, step=epoch, epoch_total=num_epochs, train_loss=train_loss, train_acc=train_acc,
+                                                                              val_loss=val_loss, val_acc=val_acc)#, acc=train_acc)
+                nsml.save(epoch)
             
-            scheduler.step()
+                scheduler.step()
