@@ -7,6 +7,7 @@ import cv2
 import numpy as np
 import nsml
 from nsml.constants import DATASET_PATH, GPU_NUM
+from torch.optim.lr_scheduler import CosineAnnealingLR
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader 
@@ -177,7 +178,11 @@ if __name__ == '__main__':
     # Loss and optimizer
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-6)
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=15, gamma=0.8)
+    eta_min = 1e-5
+    T_max = 10
+    T_mult = 1
+    restart_decay = 0.97
+    scheduler = CosineAnnealingLR(optimizer, T_max=T_max, eta_min=eta_min, last_epoch=-1)
 
     ############ DONOTCHANGE ###############
     bind_model(model)
